@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cek Ongkir Mahkota Raja Aluminium</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+body{font-family:Arial;max-width:900px;margin:auto;padding:20px}
+#map{height:450px;margin-top:15px}
+input,button{width:100%;padding:10px;margin:6px 0}
+.hasil{border:1px solid #ccc;padding:12px;margin-top:10px}
+</style>
+</head>
+<body>
+<h2>CEK ONGKIR MAHKOTA RAJA ALUMINIUM</h2>
+<p>Titik awal: Sukodono, Lumajang</p>
+
+<p><b>Langkah penting:</b> Daftar gratis API key OpenRouteService lalu tempelkan pada kolom di bawah.</p>
+
+<input id="tujuan" placeholder="Contoh: Kecamatan Rambipuji, Jember">
+<button onclick="hitung()">Hitung Ongkir Jalur Mobil</button>
+
+<div class="hasil" id="hasil"></div>
+<div id="map"></div>
+
+<script>
+const asal={lat:-8.126,lon:113.224};
+
+const map=L.map('map').setView([asal.lat,asal.lon],9);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+L.marker([asal.lat,asal.lon]).addTo(map).bindPopup("Mahkota Raja Aluminium");
+
+async function hitung(){
+ const key="eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjY4ODI0YzBkOGFiOTQ1ZTliYjVjZDAzMTdiMmJmY2ZiIiwiaCI6Im11cm11cjY0In0=";
+ if(!key){alert('Masukkan API Key OpenRouteService');return;}
+
+ const tujuan=document.getElementById('tujuan').value.trim();
+ if(!tujuan){alert('Masukkan tujuan');return;}
+
+ const geo=await fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(tujuan+', Jawa Timur, Indonesia'));
+ const lokasi=await geo.json();
+
+ if(!lokasi.length){alert('Lokasi tidak ditemukan');return;}
+
+ const lat=parseFloat(lokasi[0].lat);
+ const lon=parseFloat(lokasi[0].lon);
+
+ const route=await fetch(
+ 'https://api.openrouteservice.org/v2/directions/driving-car?api_key='+key+
+ '&start='+asal.lon+','+asal.lat+'&end='+lon+','+lat
+ );
+
+ const data=await route.json();
+
+ const jarak=data.features[0].properties.segments[0].distance/1000;
+
+ const alamat=lokasi[0].display_name.toLowerCase();
+
+ let tarifPer10Km=alamat.includes('lumajang') ? 20000 : 30000;
+
+ let ongkirDasar=Math.ceil(jarak/10)*tarifPer10Km;
+ let ongkir=Math.ceil(ongkirDasar/25000)*25000;
+
+ document.getElementById('hasil').innerHTML=
+ '<b>Tujuan:</b> '+lokasi[0].display_name+'<br>'+
+ '<b>Jarak Jalur Mobil:</b> '+jarak.toFixed(1)+' km<br>'+
+ '<b>Ongkir:</b> Rp '+ongkir.toLocaleString('id-ID');
+
+ map.fitBounds([[asal.lat,asal.lon],[lat,lon]]);
+ L.marker([lat,lon]).addTo(map);
+}
+</script>
+</body>
+</html>
